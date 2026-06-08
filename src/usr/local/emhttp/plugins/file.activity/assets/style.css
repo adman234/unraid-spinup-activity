@@ -57,6 +57,17 @@ input.flatpickr-input {
     white-space: normal;
 }
 
+/* Keep long File Path / Process Path cells from blowing out the table width.
+   Truncate with an ellipsis; the full value is available via the cell tooltip. */
+span.fa-truncate {
+    display: inline-block;
+    max-width: 38ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
 button.exclusion-button {
     margin-bottom: 2px;
     margin-top: 2px;

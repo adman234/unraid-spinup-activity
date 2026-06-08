@@ -112,6 +112,20 @@ DataTable.feature.register("autoRefresh", (settings, opts) => {
   return toolbar;
 });
 
+// Render for long columns (File Path / Process Path): escape the value, cap its
+// width via CSS, and expose the full text as a hover tooltip. Sorting/filtering
+// still use the raw value (returned for non-"display" types).
+function renderTruncated(data, type) {
+  if (type !== "display") {
+    return data;
+  }
+  const div = document.createElement("div");
+  div.textContent = data == null ? "" : String(data);
+  const safe = div.innerHTML; // escapes & < >
+  const titleSafe = safe.replace(/"/g, "&quot;");
+  return '<span class="fa-truncate" title="' + titleSafe + '">' + safe + "</span>";
+}
+
 function getDatatableConfig(url) {
   return {
     ajax: {
@@ -165,6 +179,11 @@ function getDatatableConfig(url) {
           target: 0,
           content: [],
         },
+      },
+      {
+        // File Path (4) and Process Path (6): truncate with ellipsis + tooltip.
+        targets: [4, 6],
+        render: renderTruncated,
       },
       {
         targets: [2, 3, 7],

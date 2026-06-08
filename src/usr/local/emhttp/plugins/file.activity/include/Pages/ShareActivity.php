@@ -48,9 +48,12 @@ if (version_compare($vars['version'] ?? "", '7.1', '<=')) {
 <script src="/plugins/file.activity/assets/flatpickr.min.js"></script>
 <link rel="stylesheet" href="/plugins/file.activity/assets/flatpickr.min.css">
 
-<link type="text/css" rel="stylesheet" href="/plugins/file.activity/assets/style.css?v=2026.06.08.0004">
+<link type="text/css" rel="stylesheet" href="/plugins/file.activity/assets/style.css?v=2026.06.08.0005">
 
-<script src="/plugins/file.activity/assets/fileactivity.js?v=2026.06.08.0004"></script>
+<?php $fa_path_width = (new Config())->getPathMaxWidth(); ?>
+<style>:root { --fa-path-maxwidth: <?= intval($fa_path_width); ?>ch; }</style>
+
+<script src="/plugins/file.activity/assets/fileactivity.js?v=2026.06.08.0005"></script>
 
 <table id='logTable' class="stripe compact">
     <thead>

@@ -129,6 +129,16 @@ $(function() {
     </blockquote>
 
     <dl>
+        <dt><?= $tr->tr("path_max_width"); ?></dt>
+        <dd>
+            <input type="number" name="path_max_width" min="1" step="1" class="narrow" value="<?= htmlspecialchars(strval($fileactivity_cfg->getPathMaxWidth()));?>" placeholder="40">
+        </dd>
+    </dl>
+    <blockquote class="inline_help">
+        <?= $tr->tr("settings.help.path_max_width"); ?>
+    </blockquote>
+
+    <dl>
         <dt><?= $tr->tr("exclusions"); ?></dt>
         <dd><span><button type="button" id="add-exclusion" class="exclusion-button" onclick="addExclusion()"><?= $tr->tr("add"); ?></button></span></dd>
     </dl>

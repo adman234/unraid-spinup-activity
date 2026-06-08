@@ -146,8 +146,8 @@ function getDatatableConfig(url) {
       { name: "processPath", data: "processPath" },
       { name: "disk", data: "disk", visible: true, orderable: false },
     ],
-    // Sort by hit count (highest first) by default.
-    order: [[1, 'desc']],
+    // Sort by Last Seen (most recent first) by default.
+    order: [[0, 'desc']],
     columnControl: {
       target: 0,
       content: [
@@ -159,6 +159,14 @@ function getDatatableConfig(url) {
       ],
     },
     columnDefs: [
+      {
+        // File Path (4) and Process Path (6): truncate with ellipsis + tooltip.
+        // Must precede the '_all' entry below: DataTables applies the first
+        // matching definition per property, so this render has to come first to
+        // win over the generic text renderer.
+        targets: [4, 6],
+        render: renderTruncated,
+      },
       {
         targets: '_all',
         render: DataTable.render.text(),
@@ -179,11 +187,6 @@ function getDatatableConfig(url) {
           target: 0,
           content: [],
         },
-      },
-      {
-        // File Path (4) and Process Path (6): truncate with ellipsis + tooltip.
-        targets: [4, 6],
-        render: renderTruncated,
       },
       {
         targets: [2, 3, 7],

@@ -39,6 +39,7 @@
     "process_path": "Process Path",
     "container_name": "Container Name",
     "disk": "Disk",
+    "path_max_width": "File Path Column Width",
     "settings": {
         "monitoring": "File Activity Monitoring",
         "description": "File open, read, write, and modify activity is monitored and logged on the array using inotify and is displayed by disk or share, UD disks, and cache.",
@@ -54,7 +55,8 @@
             "enable_unassigned": "Set to **Yes** to enable File Activity monitoring for Unassigned Devices if the Unassigned Devices plugin is installed.",
             "enable_cache": "Set to **Yes** to enable File Activity monitoring for the Cache and Pool Disks.",
             "display_events": "This is the number of file events shown on disks and shares from the File Activity log for each share or disk.",
-            "rollover": "The number of file events to keep in the File Activity log before rolling over to a new log file. The current log file and one previous log file are kept."
+            "rollover": "The number of file events to keep in the File Activity log before rolling over to a new log file. The current log file and one previous log file are kept.",
+            "path_max_width": "Maximum width (in characters) of the File Path and Process Path columns before they are truncated with an ellipsis. Hover a truncated cell to see the full path. Default: 40."
         }
     }
 }

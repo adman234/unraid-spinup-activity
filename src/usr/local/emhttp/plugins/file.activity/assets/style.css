@@ -61,7 +61,7 @@ input.flatpickr-input {
    Truncate with an ellipsis; the full value is available via the cell tooltip. */
 span.fa-truncate {
     display: inline-block;
-    max-width: 38ch;
+    max-width: var(--fa-path-maxwidth, 40ch);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

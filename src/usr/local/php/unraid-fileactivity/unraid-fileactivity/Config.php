@@ -31,6 +31,9 @@ class Config
      */
     private array $exclusions = ['(?i)appdata', '(?i)docker', '(?i)system', '(?i)syslogs'];
     private int $max_records  = 20000;
+    // Max width (in characters) of the File Path / Process Path columns before
+    // they are truncated with an ellipsis. Display-only; ignored by the watcher.
+    private int $path_max_width = 40;
 
     private string $config_path = '/boot/config/plugins/file.activity/config.json';
 
@@ -67,6 +70,7 @@ class Config
                 $this->display_events     = isset($data['display_events']) && is_numeric($data['display_events']) ? intval($data['display_events']) : $this->display_events;
                 $this->exclusions         = is_array($data['exclusions'] ?? null) ? array_values(array_filter($data['exclusions'], static fn (mixed $v): bool => is_string($v))) : $this->exclusions;
                 $this->max_records        = isset($data['max_records']) && is_numeric($data['max_records']) ? intval($data['max_records']) : $this->max_records;
+                $this->path_max_width     = isset($data['path_max_width']) && is_numeric($data['path_max_width']) ? intval($data['path_max_width']) : $this->path_max_width;
             }
         }
     }
@@ -80,7 +84,8 @@ class Config
             'ssd'                => $this->ssd,
             'display_events'     => $this->display_events,
             'exclusions'         => $this->exclusions,
-            'max_records'        => $this->max_records
+            'max_records'        => $this->max_records,
+            'path_max_width'     => $this->path_max_width
         ]) ?: '{}';
 
         file_put_contents($this->config_path, $config);
@@ -116,6 +121,10 @@ class Config
     public function getMaxRecords(): int
     {
         return $this->max_records;
+    }
+    public function getPathMaxWidth(): int
+    {
+        return $this->path_max_width;
     }
 
     public function setEnable(bool $enable): void
@@ -155,5 +164,13 @@ class Config
             throw new \InvalidArgumentException("Max records must be a positive integer.");
         }
         $this->max_records = $max_records;
+    }
+
+    public function setPathMaxWidth(int $path_max_width): void
+    {
+        if ($path_max_width <= 0) {
+            throw new \InvalidArgumentException("Path max width must be a positive integer.");
+        }
+        $this->path_max_width = $path_max_width;
     }
 }

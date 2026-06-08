@@ -72,6 +72,7 @@ $app->post("{$prefix}/config", function (Request $request, Response $response, $
         $config->setExclusions([]);
     }
     $config->setMaxRecords(isset($data['max_records']) && is_numeric($data['max_records']) ? intval($data['max_records']) : $config->getMaxRecords());
+    $config->setPathMaxWidth(isset($data['path_max_width']) && is_numeric($data['path_max_width']) ? intval($data['path_max_width']) : $config->getPathMaxWidth());
     $config->save();
 
     $utils           = new Utils("fileactivity");

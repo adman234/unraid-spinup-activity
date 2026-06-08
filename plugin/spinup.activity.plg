@@ -2,15 +2,15 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "spinup.activity">
   <!ENTITY author    "adman234">
-  <!ENTITY version   "2026.06.08.0003">
+  <!ENTITY version   "2026.06.08.0004">
   <!ENTITY pkgname   "unraid-fileactivity">
-  <!ENTITY pkgver    "unraid-fileactivity-2026.06.08.0003-noarch-1.txz">
+  <!ENTITY pkgver    "unraid-fileactivity-2026.06.08.0004-noarch-1.txz">
   <!ENTITY plugindir "/usr/local/emhttp/plugins/file.activity">
   <!ENTITY cachedir  "/boot/config/plugins/spinup.activity">
   <!ENTITY github    "adman234/unraid-spinup-activity">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/adman234/unraid-spinup-activity/main/plugin/spinup.activity.plg">
-  <!ENTITY txzURL    "https://github.com/adman234/unraid-spinup-activity/releases/download/2026.06.08.0003/unraid-fileactivity-2026.06.08.0003-noarch-1.txz">
-  <!ENTITY txzSHA256 "a040648b17c1462299ba398ef2d8ee7263d4d4f1258e43019548fdf03c9b839a">
+  <!ENTITY txzURL    "https://github.com/adman234/unraid-spinup-activity/releases/download/2026.06.08.0004/unraid-fileactivity-2026.06.08.0004-noarch-1.txz">
+  <!ENTITY txzSHA256 "4eeb82c5749ca9c4753972cd179a718e5dcf9ca8811ce22b15fd42a207f130bd">
 ]>
 
 <PLUGIN
@@ -26,6 +26,10 @@
 
 <CHANGES>
 <![CDATA[
+###2026.06.08.0004###
+- Container detection for user-share access now also matches open files by inode and by share-relative path suffix, since a container's file descriptors are shown in its own mount namespace rather than as /mnt/... host paths. Adds debug logging for the scan.
+- Version the JS/CSS asset URLs so the column-width (File Path / Process Path truncation) fix loads after an update without a manual browser cache clear.
+
 ###2026.06.08.0003###
 - Detect the container behind Unraid user-share (FUSE/shfs) reads and writes: when an event is attributed to shfs, find the process actually holding the file open and report its container. This is what makes container names show up for media/appdata access via /mnt/user.
 - Negotiate the Docker API version so container lookups work across Docker versions.
@@ -65,10 +69,10 @@ do
     kill $pid >/dev/null 2>&1
 done
 
-upgradepkg --install-new /boot/config/plugins/spinup.activity/unraid-fileactivity-2026.06.08.0003-noarch-1.txz
+upgradepkg --install-new /boot/config/plugins/spinup.activity/unraid-fileactivity-2026.06.08.0004-noarch-1.txz
 
 # cleanup old versions
-rm -f $(ls /boot/config/plugins/spinup.activity/unraid-fileactivity-*.txz 2>/dev/null | grep -v '2026.06.08.0003')
+rm -f $(ls /boot/config/plugins/spinup.activity/unraid-fileactivity-*.txz 2>/dev/null | grep -v '2026.06.08.0004')
 
 /usr/local/emhttp/plugins/file.activity/scripts/migrate-config.php
 mkdir -p /var/log/file.activity
@@ -78,7 +82,7 @@ mkdir -p /var/log/file.activity
 echo ""
 echo "----------------------------------------------------"
 echo " Spinup Activity has been installed."
-echo " Version: 2026.06.08.0003"
+echo " Version: 2026.06.08.0004"
 echo " Fork of File Activity by Derek Kaser (dkaser)."
 echo "----------------------------------------------------"
 echo ""

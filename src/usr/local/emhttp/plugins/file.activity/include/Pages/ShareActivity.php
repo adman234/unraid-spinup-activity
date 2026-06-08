@@ -48,9 +48,9 @@ if (version_compare($vars['version'] ?? "", '7.1', '<=')) {
 <script src="/plugins/file.activity/assets/flatpickr.min.js"></script>
 <link rel="stylesheet" href="/plugins/file.activity/assets/flatpickr.min.css">
 
-<link type="text/css" rel="stylesheet" href="/plugins/file.activity/assets/style.css">
+<link type="text/css" rel="stylesheet" href="/plugins/file.activity/assets/style.css?v=2026.06.08.0004">
 
-<script src="/plugins/file.activity/assets/fileactivity.js"></script>
+<script src="/plugins/file.activity/assets/fileactivity.js?v=2026.06.08.0004"></script>
 
 <table id='logTable' class="stripe compact">
     <thead>

@@ -23,7 +23,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type openFileCacheEntry struct {
@@ -39,8 +42,13 @@ type openFileCacheEntry struct {
 // by shfs, which performs the underlying read on /mnt/<disk-or-pool>/<share>/...
 // fanotify therefore reports shfs as the PID, and shfs is not in a Docker
 // cgroup -- so cgroup-based detection yields nothing. We recover the real client
-// by scanning /proc/<pid>/fd for another process that currently holds the same
-// file open, and reading that process's container cgroup.
+// by scanning /proc/<pid>/fd for another process holding the same file open.
+//
+// Matching is done three ways because a container's fd paths are rendered in its
+// own mount namespace (e.g. /data/...), not the host path:
+//   - exact host path (direct /mnt access from the host),
+//   - same inode (direct disk/pool access from inside a container),
+//   - path suffix (user-share access, where only the share-relative tail matches).
 //
 // Scans are cached per file path with a TTL so sustained reads (e.g. streaming a
 // media file) only pay the cost once.
@@ -58,7 +66,7 @@ func NewOpenFileResolver() *OpenFileResolver {
 }
 
 // ResolveByOpenFile returns the Docker container ID of a process (other than the
-// process that triggered the event) holding filePath open, or "" if none is found.
+// process that triggered the event) holding filePath open, or "" if none found.
 func (r *OpenFileResolver) ResolveByOpenFile(filePath string, excludePID int) string {
 	now := time.Now()
 
@@ -86,7 +94,17 @@ func (r *OpenFileResolver) ResolveByOpenFile(filePath string, excludePID int) st
 }
 
 func scanForOpenFile(filePath string, excludePID int) string {
-	candidates := candidatePaths(filePath)
+	exactPaths := candidatePaths(filePath)
+	suffixes := candidateSuffixes(filePath)
+	targetDev, targetIno, haveStat := statDevIno(filePath)
+
+	log.Debug().
+		Str("file", filePath).
+		Int("exclude_pid", excludePID).
+		Interface("exact", keys(exactPaths)).
+		Strs("suffixes", suffixes).
+		Bool("have_inode", haveStat).
+		Msg("open-file scan: looking for container holding this file open")
 
 	procEntries, err := os.ReadDir("/proc")
 	if err != nil {
@@ -94,10 +112,6 @@ func scanForOpenFile(filePath string, excludePID int) string {
 	}
 
 	for _, procEntry := range procEntries {
-		if !procEntry.IsDir() {
-			continue
-		}
-
 		name := procEntry.Name()
 		if name == "" || name[0] < '0' || name[0] > '9' {
 			continue
@@ -116,39 +130,133 @@ func scanForOpenFile(filePath string, excludePID int) string {
 		}
 
 		for _, fd := range fds {
-			target, err := os.Readlink(fdDir + "/" + fd.Name())
+			fdPath := fdDir + "/" + fd.Name()
+
+			target, err := os.Readlink(fdPath)
 			if err != nil {
 				continue
 			}
 
-			if _, match := candidates[target]; !match {
+			if !fdMatches(target, fdPath, exactPaths, suffixes, targetDev, targetIno, haveStat) {
 				continue
 			}
 
-			// This process has the file open. If it's in a container, that's our
-			// answer; otherwise keep scanning for a containerized holder.
-			if cid := getContainerID(pid); cid != "" {
+			cid := getContainerID(pid)
+
+			log.Debug().
+				Int("pid", pid).
+				Str("fd_target", target).
+				Str("container_id", cid).
+				Msg("open-file scan: found a process holding the file open")
+
+			// If it's in a container, that's our answer; otherwise keep scanning
+			// for a containerized holder (e.g. skip shfs itself).
+			if cid != "" {
 				return cid
 			}
 		}
 	}
 
+	log.Debug().Str("file", filePath).Msg("open-file scan: no containerized holder found")
+
 	return ""
 }
 
-// candidatePaths returns the host paths a container's file descriptor might
-// resolve to for the same underlying file: the literal disk/pool path from the
-// event and its /mnt/user (user-share) equivalent.
+func fdMatches(
+	target, fdPath string,
+	exactPaths map[string]struct{},
+	suffixes []string,
+	targetDev, targetIno uint64,
+	haveStat bool,
+) bool {
+	if _, ok := exactPaths[target]; ok {
+		return true
+	}
+
+	for _, suffix := range suffixes {
+		if target == suffix || strings.HasSuffix(target, "/"+suffix) {
+			return true
+		}
+	}
+
+	// Same underlying file (handles direct disk/pool access from inside a
+	// container, where the fd path is namespaced but the inode is shared).
+	if haveStat {
+		if dev, ino, ok := statDevIno(fdPath); ok && dev == targetDev && ino == targetIno {
+			return true
+		}
+	}
+
+	return false
+}
+
+// candidatePaths returns the host paths a fd might resolve to for the same file:
+// the literal disk/pool path and its /mnt/user (user-share) equivalent.
 func candidatePaths(filePath string) map[string]struct{} {
 	out := map[string]struct{}{filePath: {}}
 
-	const prefix = "/mnt/"
-	if strings.HasPrefix(filePath, prefix) {
-		rest := filePath[len(prefix):]
-		// rest is "<disk-or-pool>/<share>/<...>"; swap the disk/pool for "user".
-		if i := strings.IndexByte(rest, '/'); i > 0 {
-			out["/mnt/user/"+rest[i+1:]] = struct{}{}
+	if rel, ok := relUnderMnt(filePath); ok {
+		if i := strings.IndexByte(rel, '/'); i > 0 {
+			out["/mnt/user/"+rel[i+1:]] = struct{}{}
 		}
+	}
+
+	return out
+}
+
+// candidateSuffixes returns share-relative tails used to match a container's
+// namespaced fd path (e.g. /data/torrents/x.mkv) against the host event path
+// (/mnt/cache/data/torrents/x.mkv).
+func candidateSuffixes(filePath string) []string {
+	var out []string
+
+	if rel, ok := relUnderMnt(filePath); ok {
+		// "<share>/<rest>" (rel under the disk/pool)
+		out = append(out, rel)
+		// "<rest>" (rel under the share)
+		if i := strings.IndexByte(rel, '/'); i > 0 {
+			out = append(out, rel[i+1:])
+		}
+	}
+
+	return out
+}
+
+// relUnderMnt strips a leading "/mnt/<disk-or-pool>/" prefix, returning the rest.
+func relUnderMnt(filePath string) (string, bool) {
+	const prefix = "/mnt/"
+	if !strings.HasPrefix(filePath, prefix) {
+		return "", false
+	}
+
+	rest := filePath[len(prefix):]
+
+	i := strings.IndexByte(rest, '/')
+	if i <= 0 || i+1 >= len(rest) {
+		return "", false
+	}
+
+	return rest[i+1:], true
+}
+
+func statDevIno(path string) (uint64, uint64, bool) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, 0, false
+	}
+
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, 0, false
+	}
+
+	return uint64(st.Dev), uint64(st.Ino), true
+}
+
+func keys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
 	}
 
 	return out

@@ -117,24 +117,74 @@ class Activity
     }
 
     /**
+     * Read the activity log for a disk/share and collapse repeated events for the
+     * same (container, file, action) into a single row with an occurrence count.
+     *
+     * This is the core difference from upstream File Activity: instead of one row
+     * per raw event (the same file could appear hundreds of times), each file is
+     * listed once with a hit count plus first/last-seen timestamps, making it easy
+     * to spot which container is hammering a disk and keeping it spun up.
+     *
      * @return list<array<string, string>>
      */
     private function getActivityEntries(string $disk, int $display_events): array
     {
-        $files      = shell_exec("cat /var/log/file.activity/data.log.1 /var/log/file.activity/data.log  2>/dev/null | grep -P " . escapeshellarg($disk) . " | tail -n " . strval($display_events));
-        $filesArray = array();
+        $files = shell_exec("cat /var/log/file.activity/data.log.1 /var/log/file.activity/data.log  2>/dev/null | grep -P " . escapeshellarg($disk) . " | tail -n " . strval($display_events));
+
+        /** @var array<string, array<string, string|int>> $groups */
+        $groups = array();
 
         if ($files) {
-            $files = explode("\n", $files);
-            foreach ($files as $file) {
-                if ( ! empty($file)) {
-                    $fileEntry    = new ActivityEntry($file);
-                    $filesArray[] = $fileEntry->toArray();
+            $lines = explode("\n", $files);
+            foreach ($lines as $line) {
+                if (empty($line)) {
+                    continue;
                 }
+
+                $entry = new ActivityEntry($line);
+
+                // Group identical activity: same container, file, and action.
+                // PID/process path can vary between hits, so the most recent one wins.
+                $key = $entry->getContainerName() . "\0" . $entry->getFilePath() . "\0" . $entry->getAction();
+
+                if ( ! isset($groups[$key])) {
+                    $groups[$key] = [
+                        'timestamp'     => $entry->getTimestamp(),
+                        'firstSeen'     => $entry->getTimestamp(),
+                        'action'        => $entry->getAction(),
+                        'filePath'      => $entry->getFilePath(),
+                        'pid'           => $entry->getPID(),
+                        'processPath'   => $entry->getProcessPath(),
+                        'containerName' => $entry->getContainerName(),
+                        'count'         => 0,
+                    ];
+                }
+
+                $group          = &$groups[$key];
+                $group['count'] = intval($group['count']) + 1;
+
+                // Timestamps are ISO-8601 with a fixed offset, so string comparison
+                // orders them correctly. Track the newest and oldest occurrence.
+                if (strcmp(strval($entry->getTimestamp()), strval($group['timestamp'])) >= 0) {
+                    $group['timestamp']   = $entry->getTimestamp();
+                    $group['pid']         = $entry->getPID();
+                    $group['processPath'] = $entry->getProcessPath();
+                }
+                if (strcmp(strval($entry->getTimestamp()), strval($group['firstSeen'])) < 0) {
+                    $group['firstSeen'] = $entry->getTimestamp();
+                }
+
+                unset($group);
             }
         }
 
-        return $filesArray;
+        // Normalize every value to string for consistent JSON typing in the table.
+        $result = array();
+        foreach (array_values($groups) as $row) {
+            $result[] = array_map('strval', $row);
+        }
+
+        return $result;
     }
 
     /**

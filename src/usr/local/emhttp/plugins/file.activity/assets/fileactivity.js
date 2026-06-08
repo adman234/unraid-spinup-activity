@@ -118,16 +118,22 @@ function getDatatableConfig(url) {
       url: url,
       dataSrc: "",
     },
+    // "timestamp" stays at index 0 so the date-range filter (which reads data[0])
+    // keeps working; it now holds the last-seen time of the aggregated group.
+    // Count + Container are promoted next so the worst disk-spinning offender is
+    // obvious at a glance.
     columns: [
       { name: "Timestamp", data: "timestamp" },
+      { name: "count", data: "count", type: "num" },
+      { name: "containerName", data: "containerName" },
       { name: "action", data: "action" },
       { name: "path", data: "filePath" },
       { name: "pid", data: "pid" },
       { name: "processPath", data: "processPath" },
-      { name: "containerName", data: "containerName" },
       { name: "disk", data: "disk", visible: true, orderable: false },
     ],
-    order: [[0, 'desc']],
+    // Sort by hit count (highest first) by default.
+    order: [[1, 'desc']],
     columnControl: {
       target: 0,
       content: [
@@ -153,7 +159,15 @@ function getDatatableConfig(url) {
         },
       },
       {
-        targets: [1, 5, 6],
+        targets: 1,
+        className: "dt-head-left dt-body-right",
+        columnControl: {
+          target: 0,
+          content: [],
+        },
+      },
+      {
+        targets: [2, 3, 7],
         columnControl: {
           target: 0,
           content: [

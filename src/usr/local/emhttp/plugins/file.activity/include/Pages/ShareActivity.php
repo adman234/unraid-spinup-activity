@@ -55,12 +55,13 @@ if (version_compare($vars['version'] ?? "", '7.1', '<=')) {
 <table id='logTable' class="stripe compact">
     <thead>
         <tr>
-            <th><strong><?= $tr->tr("date"); ?></strong></th>
+            <th><strong><?= $tr->tr("last_seen"); ?></strong></th>
+            <th><strong><?= $tr->tr("count"); ?></strong></th>
+            <th><strong><?= $tr->tr("container_name"); ?></strong></th>
             <th><strong><?= $tr->tr("action"); ?></strong></th>
             <th><strong><?= $tr->tr("file_path"); ?></strong></th>
             <th><strong><?= $tr->tr("pid"); ?></strong></th>
             <th><strong><?= $tr->tr("process_path"); ?></strong></th>
-            <th><strong><?= $tr->tr("container_name"); ?></strong></th>
             <th><strong><?= $tr->tr("group"); ?></strong></th>
         </tr>
     </thead>
@@ -68,6 +69,7 @@ if (version_compare($vars['version'] ?? "", '7.1', '<=')) {
     </tbody>
     <tfoot>
         <tr>
+            <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>

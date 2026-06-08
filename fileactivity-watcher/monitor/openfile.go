@@ -53,15 +53,21 @@ type openFileCacheEntry struct {
 // Scans are cached per file path with a TTL so sustained reads (e.g. streaming a
 // media file) only pay the cost once.
 type OpenFileResolver struct {
-	mu    sync.Mutex
-	cache map[string]openFileCacheEntry
-	ttl   time.Duration
+	mu     sync.Mutex
+	cache  map[string]openFileCacheEntry
+	ttl    time.Duration
+	negTTL time.Duration
 }
 
 func NewOpenFileResolver() *OpenFileResolver {
 	return &OpenFileResolver{
 		cache: make(map[string]openFileCacheEntry),
 		ttl:   30 * time.Second,
+		// Don't hold on to "couldn't find a container" results for long: a
+		// short-lived reader (e.g. immich opening a photo) may not have the file
+		// open at scan time, but a repeat access moments later might, so re-check
+		// soon instead of caching the miss for the full TTL.
+		negTTL: 3 * time.Second,
 	}
 }
 
@@ -71,10 +77,17 @@ func (r *OpenFileResolver) ResolveByOpenFile(filePath string, excludePID int) st
 	now := time.Now()
 
 	r.mu.Lock()
-	if e, ok := r.cache[filePath]; ok && now.Sub(e.cachedAt) < r.ttl {
-		r.mu.Unlock()
+	if e, ok := r.cache[filePath]; ok {
+		ttl := r.ttl
+		if e.containerID == "" {
+			ttl = r.negTTL
+		}
 
-		return e.containerID
+		if now.Sub(e.cachedAt) < ttl {
+			r.mu.Unlock()
+
+			return e.containerID
+		}
 	}
 	r.mu.Unlock()
 

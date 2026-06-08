@@ -105,6 +105,7 @@ func (a *App) startEventListener(ctx context.Context) {
 
 		dockerClient := docker.New()
 		filter := filter.New(a.appConfig)
+		openFileResolver := monitor.NewOpenFileResolver()
 
 		activityFile, err := writer.New(a.appConfig.ActivityPath, a.appConfig.MaxRecords)
 		if err != nil {
@@ -137,6 +138,16 @@ func (a *App) startEventListener(ctx context.Context) {
 				containerName := ""
 				if eventDetails.ContainerID != "" {
 					containerName = dockerClient.GetContainerNameByID(eventDetails.ContainerID, ctx)
+				}
+
+				// Unraid serves user-share I/O through shfs, so the event is
+				// attributed to shfs rather than the requesting container. If we
+				// couldn't identify a container directly, find another process
+				// holding this file open and resolve its container instead.
+				if containerName == "" {
+					if cid := openFileResolver.ResolveByOpenFile(event.File, event.PID); cid != "" {
+						containerName = dockerClient.GetContainerNameByID(cid, ctx)
+					}
 				}
 
 				err = activityFile.Write(

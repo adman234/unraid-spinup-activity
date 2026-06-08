@@ -40,7 +40,9 @@ func New() *Client {
 	// Initialize Docker client
 	var err error
 
-	dockerClient, err := client.New()
+	// Negotiate the API version so we work against whatever Docker daemon Unraid
+	// ships, rather than failing when our client default is newer than the server.
+	dockerClient, err := client.New(client.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to create Docker client")
 	}

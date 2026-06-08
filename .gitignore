@@ -3,4 +3,4 @@
 .php-cs-fixer.cache
 vendor
 fileactivity-watcher/fileactivity-watcher
-src/usr/local/php/unraid-fileactivity/bin/fileactivity-watcher
+src/usr/local/php/unraid-fileactivity/bin/fileactivity-watcher.build/

@@ -31,6 +31,20 @@ Spinup Activity addresses both with display-side changes only (the watcher binar
 
 Everything else — settings, exclusions, reads vs. writes, supported disks — behaves exactly like upstream.
 
+## Install
+
+On Unraid: **Plugins → Install Plugin**, paste this URL, and click **Install**:
+
+```
+https://raw.githubusercontent.com/adman234/unraid-spinup-activity/main/plugin/spinup.activity.plg
+```
+
+The plugin appears under **Tools → File Activity** (tabs: Spinup Activity / Disk / Share /
+Settings). Open the **Settings** tab and enable monitoring once.
+
+> ⚠️ Spinup Activity replaces the original **File Activity** plugin and uses the same on-disk
+> paths — **don't run both at once.** If you have File Activity installed, remove it first.
+
 ## Credit & license
 
 - Original plugin: **File Activity** by Derek Kaser — <https://github.com/dkaser/unraid-fileactivity>
